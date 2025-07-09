@@ -402,12 +402,13 @@ def generate_initdotsh(package, specs, architecture, post_build=False):
                     for key, value in spec.get("prepend_path", {}).items()}
     # By default we add the .../bin directory to PATH and .../lib to LD_LIBRARY_PATH.
     # Prepend to these paths, so that our packages win against system ones.
-    for key, value in (("PATH", "bin"), ("LD_LIBRARY_PATH", "lib")):
+    for key, value in (("PATH", "bin"), ("LD_LIBRARY_PATH", "lib"),  ("LD_LIBRARY_PATH", "lib64")):
       prepend_path.setdefault(key, []).insert(0, "${}_ROOT/{}".format(bigpackage, value))
-    lines.extend('export {key}="{value}${{{key}+:${key}}}"'
-                 .format(key=key, value=":".join(value))
+    lines.extend('[ ! -d {value} ] || export {key}="{value}${{{key}+:${key}}}"'
+                 .format(key=key, value=dir)
                  for key, value in prepend_path.items()
-                 if key != "DYLD_LIBRARY_PATH")
+                 if key != "DYLD_LIBRARY_PATH"
+                 for dir in value)
 
   # Return string without a trailing newline, since we expect call sites to
   # append that (and the obvious way to inesrt it into the build template is by
