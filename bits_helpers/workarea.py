@@ -153,7 +153,7 @@ def checkout_sources(spec, work_dir, reference_sources, containerised_build):
 
   if "sources" in spec:
     for s in spec["sources"]:
-      download(s,source_dir)
+      download(s,source_dir, work_dir)
   if "source" not in spec:
     # There are no sources, so just create an empty SOURCEDIR.
     os.makedirs(source_dir, exist_ok=True)

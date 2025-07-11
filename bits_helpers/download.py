@@ -14,8 +14,6 @@ from time import time
 from types import SimpleNamespace
 from bits_helpers.log import error, warning, debug
 
-opt_dict = {"workDir": "/build/cmsbld-bits/sw", "tempDirPrefix": "tmp"}
-options =  SimpleNamespace(**opt_dict)
 urlRe = re.compile(r".*:.*/.*")
 urlAuthRe = re.compile(r'^(http(s|)://)([^:]+:[^@]+)@(.+)$')
 
@@ -55,7 +53,7 @@ def makedirs(path):
     if returncode != 0:
         raise OSError("makedirs() failed (return: %s):\n%s" % (returncode, out))
 
-def downloadUrllib2(source, destDir, cache=False):
+def downloadUrllib2(source, destDir, work_dir):
     try:
         dest = "/".join([destDir.rstrip("/"), basename(source)])
         headers={"Cache-Control": "no-cache"}
@@ -80,10 +78,7 @@ def downloadUrllib2(source, destDir, cache=False):
         else:
             unlink(tmpfile)
     except URLError as e:
-        if cache:
-            debug("Internal cached file not available %s: %s" % (source, e))
-        else:
-            debug("Error while downloading %s: %s" % (source, e))
+        debug("Error while downloading %s: %s" % (source, e))
         return False
     except Exception as e:
         debug("Error while downloading %s: %s" % (source, e))
@@ -109,9 +104,9 @@ def downloadUrllib2(source, destDir, cache=False):
 #
 # which will be used to pack only a subset of the checkout.
 
-def downloadGit(source, dest):
+def downloadGit(source, dest, work_dir):
     protocol, gitroot, args = parseGitUrl(source)
-    tempdir = createTempDir(options.workDir, options.tempDirPrefix)
+    tempdir = createTempDir(work_dir, "tmp")
 
     exportpath = join(tempdir, args["export"])
     if protocol=="git": protocol="https"
@@ -227,7 +222,7 @@ def fixUrl(s):
             if s.endswith('?'): s=s[:-1]
     return s
 
-def download(source, dest):
+def download(source, dest, work_dir):
     noCmssdtCache = True if 'no-cmssdt-cache=1' in source else False
     isCmsdistGenerated = True if 'cmdist-generated=1' in source else False
     source = fixUrl(source)
@@ -258,7 +253,7 @@ def download(source, dest):
             raise MalformedUrl(source)
         source = "cmstc://?%s%s%s&module=CMSSW&export=src&output=/%s" % (release, baserel, extratags, output)
 
-    cacheDir = abspath(join(options.workDir, "SOURCES/cache"))
+    cacheDir = abspath(join(work_dir, "SOURCES/cache"))
     urlTypeRe = re.compile(r"([^:+]*)([^:]*)://.*")
     match = urlTypeRe.match(source)
     if not urlTypeRe.match(source):
@@ -275,8 +270,10 @@ def download(source, dest):
     realFile = join(downloadDir, filename)
     if not exists(realFile):
         debug ("Trying to fetch source file: %s" % source)
-        downloadHandler(source, downloadDir)
+        downloadHandler(source, downloadDir, work_dir)
 
     if exists(realFile):
         executeWithErrorCheck("mkdir -p {dest}; cp {src} {dest}/".format(dest=dest, src=realFile), "Failed to move source")
+    else:
+        raise downloadDir
     return
