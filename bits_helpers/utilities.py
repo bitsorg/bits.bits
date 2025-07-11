@@ -124,9 +124,10 @@ nowKwds = { "year": str(now.year),
             "day": str(now.day).zfill(2),
             "hour": str(now.hour).zfill(2) }
 
-def resolve_version(spec, defaults, branch_basename, branch_stream):
-  """Expand the version replacing the following keywords:
+def resolve_spec_data(spec, data, defaults, branch_basename="", branch_stream=""):
+  """Expand the data replacing the following keywords:
 
+  - %(package)s
   - %(commit_hash)s
   - %(short_hash)s
   - %(tag)s
@@ -134,6 +135,8 @@ def resolve_version(spec, defaults, branch_basename, branch_stream):
   - %(branch_stream)s
   - %(tag_basename)s
   - %(defaults_upper)s
+  - %(version)s
+  - %(root_dir)s
   - %(year)s
   - %(month)s
   - %(day)s
@@ -144,7 +147,11 @@ def resolve_version(spec, defaults, branch_basename, branch_stream):
   defaults_upper = defaults != "release" and "_" + defaults.upper().replace("-", "_") or ""
   commit_hash = spec.get("commit_hash", "hash_unknown")
   tag = str(spec.get("tag", "tag_unknown"))
-  return spec["version"] % {
+  version = str(spec.get("version", "version_unknown"))
+  package = spec.get("package")
+  return data % {
+    "package": package,
+    "root_dir": "${%s_ROOT}" % package.upper().replace("-","_"),
     "commit_hash": commit_hash,
     "short_hash": commit_hash[0:10],
     "tag": tag,
@@ -152,8 +159,12 @@ def resolve_version(spec, defaults, branch_basename, branch_stream):
     "branch_stream": branch_stream or tag,
     "tag_basename": basename(tag),
     "defaults_upper": defaults_upper,
+    "version": version,
     **nowKwds,
   }
+
+def resolve_version(spec, defaults, branch_basename, branch_stream):
+    return resolve_spec_data(spec, spec["version"], defaults, branch_basename, branch_stream)
 
 def resolve_tag(spec):
   """Expand the tag, replacing the following keywords:

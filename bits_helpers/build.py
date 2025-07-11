@@ -11,7 +11,7 @@ from bits_helpers.utilities import parseDefaults, readDefaults
 from bits_helpers.utilities import getPackageList, asList
 from bits_helpers.utilities import validateDefaults
 from bits_helpers.utilities import Hasher
-from bits_helpers.utilities import resolve_tag, resolve_version, short_commit_hash
+from bits_helpers.utilities import resolve_tag, resolve_version, short_commit_hash, resolve_spec_data
 from bits_helpers.git import Git, git
 from bits_helpers.sl import Sapling
 from bits_helpers.scm import SCMError
@@ -218,6 +218,9 @@ def storeHashes(package, specs, considerRelocation):
       hasher(spec.get("source", "none"))
       if "source" in spec:
         hasher(tag)
+      if "sources" in spec:
+        for src in spec["sources"]:
+          hasher(src)
 
   dh = Hasher()
   for dep in spec.get("requires", []):
@@ -386,7 +389,7 @@ def generate_initdotsh(package, specs, architecture, post_build=False):
     # Set "env" variables.
     # We only put the values in double-quotes, so that they can refer to other
     # shell variables or do command substitution (e.g. $(brew --prefix ...)).
-    lines.extend('export {}="{}"'.format(key, value)
+    lines.extend('export {}="{}"'.format(key, resolve_spec_data(spec, value, ""))
                  for key, value in spec.get("env", {}).items()
                  if key != "DYLD_LIBRARY_PATH")
 
@@ -398,7 +401,7 @@ def generate_initdotsh(package, specs, architecture, post_build=False):
                  if key != "DYLD_LIBRARY_PATH")
 
     # First convert all values to list, so that we can use .setdefault().insert() below.
-    prepend_path = {key: asList(value)
+    prepend_path = {key: [resolve_spec_data(spec, dir, "") for dir in asList(value)]
                     for key, value in spec.get("prepend_path", {}).items()}
     # By default we add the .../bin directory to PATH and .../lib to LD_LIBRARY_PATH.
     # Prepend to these paths, so that our packages win against system ones.
@@ -624,6 +627,9 @@ def doBuild(args, parser):
                "source code from this directory, add a 'source:' key to "
                "alidist/{recipe}.sh instead."
                .format(package=p, recipe=p.lower()))
+
+    if "tag" not in spec:
+      spec["tag"] = spec["version"]
     if "source" in spec:
       # Tag may contain date params like %(year)s, %(month)s, %(day)s, %(hour).
       spec["tag"] = resolve_tag(spec)
@@ -650,9 +656,15 @@ def doBuild(args, parser):
         spec["tag"] = args.develPrefix if "develPrefix" in args else develPackageBranch
         spec["commit_hash"] = "0"
 
+    if "sources" in spec:
+      spec["commit_hash"] = spec["tag"]
     # Version may contain date params like tag, plus %(commit_hash)s,
     # %(short_hash)s and %(tag)s.
     spec["version"] = resolve_version(spec, args.defaults, branch_basename, branch_stream)
+    if "source" in spec:
+      spec["source"] = resolve_spec_data(spec, spec["source"], args.defaults, branch_basename, branch_stream)
+    if "sources" in spec:
+      spec["sources"] = [resolve_spec_data(spec, src, args.defaults, branch_basename, branch_stream) for src in spec["sources"]]
 
     if spec["is_devel_pkg"] and "develPrefix" in args and args.develPrefix != "ali-master":
       spec["version"] = args.develPrefix
