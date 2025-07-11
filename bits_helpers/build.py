@@ -218,9 +218,15 @@ def storeHashes(package, specs, considerRelocation):
       hasher(spec.get("source", "none"))
       if "source" in spec:
         hasher(tag)
-      if "sources" in spec:
-        for src in spec["sources"]:
-          hasher(src)
+  if "sources" in spec:
+    for src in spec["sources"]:
+      h_all(src)
+  if "patches" in spec:
+    for patch in spec["patches"]:
+      h_all(patch)
+      with open(os.path.join(spec["pkgdir"], "patches", patch)) as ref:
+        patch_content = "".join(ref.readlines())
+        h_all(patch_content)
 
   dh = Hasher()
   for dep in spec.get("requires", []):
@@ -1078,6 +1084,12 @@ def doBuild(args, parser):
       ("FULL_BUILD_REQUIRES", " ".join(spec["full_build_requires"])),
       ("FULL_REQUIRES", " ".join(spec["full_requires"])),
     ]
+    if "sources" in spec:
+      for idx, src in enumerate(spec["sources"]):
+        buildEnvironment.append(("SOURCE%s" % idx, basename(src)))
+    if "patches" in spec:
+      for idx, src in enumerate(spec["patches"]):
+        buildEnvironment.append(("PATCH%s" % idx, basename(src)))
     # Add the extra environment as passed from the command line.
     buildEnvironment += [e.partition('=')[::2] for e in args.environment]
 
