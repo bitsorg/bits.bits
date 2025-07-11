@@ -1087,9 +1087,15 @@ def doBuild(args, parser):
     if "sources" in spec:
       for idx, src in enumerate(spec["sources"]):
         buildEnvironment.append(("SOURCE%s" % idx, basename(src)))
+      buildEnvironment.append(("SOURCE_COUNT", str(len(spec["sources"]))))
+    else:
+      buildEnvironment.append(("SOURCE_COUNT", "0"))
     if "patches" in spec:
       for idx, src in enumerate(spec["patches"]):
         buildEnvironment.append(("PATCH%s" % idx, basename(src)))
+      buildEnvironment.append(("PATCH_COUNT", str(len(spec["patches"]))))
+    else:
+      buildEnvironment.append(("PATCH_COUNT", "0"))
     # Add the extra environment as passed from the command line.
     buildEnvironment += [e.partition('=')[::2] for e in args.environment]
 
