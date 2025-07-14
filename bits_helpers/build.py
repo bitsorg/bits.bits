@@ -413,7 +413,7 @@ def generate_initdotsh(package, specs, architecture, post_build=False):
     # Prepend to these paths, so that our packages win against system ones.
     for key, value in (("PATH", "bin"), ("LD_LIBRARY_PATH", "lib"),  ("LD_LIBRARY_PATH", "lib64")):
       prepend_path.setdefault(key, []).insert(0, "${}_ROOT/{}".format(bigpackage, value))
-    lines.extend('[ ! -d {value} ] || export {key}="{value}${{{key}+:${key}}}"'
+    lines.extend('[ ! -d "{value}" ] || export {key}="{value}${{{key}+:${key}}}"'
                  .format(key=key, value=dir)
                  for key, value in prepend_path.items()
                  if key != "DYLD_LIBRARY_PATH"
@@ -667,6 +667,9 @@ def doBuild(args, parser):
     # Version may contain date params like tag, plus %(commit_hash)s,
     # %(short_hash)s and %(tag)s.
     spec["version"] = resolve_version(spec, args.defaults, branch_basename, branch_stream)
+    variables = spec.get("variables", {})
+    for k, v in variables.items():
+      variables[k] = resolve_spec_data(spec, v, args.defaults, branch_basename, branch_stream)
     if "source" in spec:
       spec["source"] = resolve_spec_data(spec, spec["source"], args.defaults, branch_basename, branch_stream)
     if "sources" in spec:

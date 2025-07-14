@@ -149,6 +149,9 @@ def resolve_spec_data(spec, data, defaults, branch_basename="", branch_stream=""
   tag = str(spec.get("tag", "tag_unknown"))
   version = str(spec.get("version", "version_unknown"))
   package = spec.get("package")
+  spec_vars = {}
+  for k, v in spec.get("variables",{}).items():
+    spec_vars[k]=v
   return data % {
     "package": package,
     "root_dir": "${%s_ROOT}" % package.upper().replace("-","_"),
@@ -160,6 +163,7 @@ def resolve_spec_data(spec, data, defaults, branch_basename="", branch_stream=""
     "tag_basename": basename(tag),
     "defaults_upper": defaults_upper,
     "version": version,
+    **spec_vars,
     **nowKwds,
   }
 
@@ -342,12 +346,21 @@ def readDefaults(configDir, defaults, error, architecture):
   return (defaultsMeta, defaultsBody)
 
 
-def getRecipeReader(url:str , dist=None):
-  m = re.search(r'^dist:(.*)@([^@]+)$', url)
-  if m and dist:
+def getRecipeReader(url:str , dist=None, genPackages={}):
+  m = re.search(r'^(dist|generate):(.*)@([^@]+)$', url)
+  if m and m.group(1) == "generate":
+    return GeneratedPackage(genPackages[m.group(2)]["command"])
+  elif m and dist:
     return GitReader(url, dist)
   else:
     return FileReader(url)
+
+# Generate a recipe of package
+class GeneratedPackage(object):
+  def __init__(self, command) -> None:
+    self.command = command
+  def __call__(self):
+    return  getoutput(self.command).strip()
 
 # Read a recipe from a file
 class FileReader(object):
@@ -451,16 +464,21 @@ def checkForFilename(taps, pkg, d):
       filename = taps.get(pkg, "%s/%s/latest" % (d, pkg))
   return filename
 
-def resolveFilename(taps, pkg, configDir):
+def getConfigPaths(configDir):
   configPath = os.environ.get("BITS_PATH")
-  cfgDir = configDir
-  pkgDirs = [cfgDir]
+  pkgDirs = [configDir]
 
   if configPath:
-    for d in configPath.split(","):
-       pkgDirs.append(cfgDir + "/" + d + ".bits")
+    for d in [join(configDir, "%s.bits" % r) for r in configPath.split(",") if r]:
+       if exists(d):
+         pkgDirs.append(d)
+  return pkgDirs
 
-  for d in pkgDirs:
+def resolveFilename(taps, pkg, configDir, genPackages):
+  if pkg in genPackages:
+    return ("generate:%s@%s" % (pkg, genPackages[pkg]["version"]), genPackages[pkg]["pkgdir"])
+
+  for d in getConfigPaths(configDir):
     filename = checkForFilename(taps,pkg,d)
     if exists(filename):
       return(filename,os.path.abspath(d))
@@ -500,6 +518,7 @@ def getPackageList(packages, specs, configDir, preferSystem, noSystem,
   requirementsCache = {}
   trackingEnvCache = {}
   packages = packages[:]
+  generatedPackages = getGeneratedPackages(configDir)
   validDefaults = []  # empty list: all OK; None: no valid default; non-empty list: list of valid ones
 
   while packages:
@@ -516,12 +535,12 @@ def getPackageList(packages, specs, configDir, preferSystem, noSystem,
     # and all dependencies' names go into a package's hash.
     pkg_filename = ("defaults-" + defaults) if p == "defaults-release" else p.lower()
 
-    filename,pkgdir = resolveFilename(taps, pkg_filename, configDir)
+    filename,pkgdir = resolveFilename(taps, pkg_filename, configDir, generatedPackages)
 
     dieOnError(not filename, "Package %s not found in %s" % (p, configDir))
     assert(filename is not None)
 
-    err, spec, recipe = parseRecipe(getRecipeReader(filename, configDir))
+    err, spec, recipe = parseRecipe(getRecipeReader(filename, configDir, generatedPackages))
     dieOnError(err, err)
     # Unless there was an error, both spec and recipe should be valid.
     # otherwise the error should have been caught above.
@@ -686,6 +705,17 @@ def getPackageList(packages, specs, configDir, preferSystem, noSystem,
     packages += spec["requires"]
   return (systemPackages, ownPackages, failedRequirements, validDefaults)
 
+def getGeneratedPackages(configDir):
+  pkgs = {}
+  pkgDirs = getConfigPaths(configDir)
+  for pkgdir in pkgDirs:
+    for vp in [x.split(os.sep)[-2] for x in  glob(join(pkgdir,"*","packages.py"))]:
+      sys.path.insert(0,join(pkgdir, vp))
+      pkg = __import__("packages")
+      pkg.getPackages(pkgs, pkgdir)
+      sys.modules.pop('packages')
+      x=sys.path.pop(0)
+  return pkgs
 
 class Hasher:
   def __init__(self) -> None:
