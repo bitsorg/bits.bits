@@ -147,12 +147,8 @@ def resolve_spec_data(spec, data, defaults, branch_basename="", branch_stream=""
   defaults_upper = defaults != "release" and "_" + defaults.upper().replace("-", "_") or ""
   commit_hash = spec.get("commit_hash", "hash_unknown")
   tag = str(spec.get("tag", "tag_unknown"))
-  version = str(spec.get("version", "version_unknown"))
   package = spec.get("package")
-  spec_vars = {}
-  for k, v in spec.get("variables",{}).items():
-    spec_vars[k]=v
-  return data % {
+  all_vars = {
     "package": package,
     "root_dir": "${%s_ROOT}" % package.upper().replace("-","_"),
     "commit_hash": commit_hash,
@@ -162,10 +158,25 @@ def resolve_spec_data(spec, data, defaults, branch_basename="", branch_stream=""
     "branch_stream": branch_stream or tag,
     "tag_basename": basename(tag),
     "defaults_upper": defaults_upper,
-    "version": version,
-    **spec_vars,
+    "version": str(spec.get("version", "version_unknown")),
+    "platform_machine": platform.machine(),
+    "sys_platform": sys.platform,
+    "os_name": os.name,
     **nowKwds,
   }
+  for k, v in spec.get("variables",{}).items():
+    all_vars[k] = v
+
+  # Support for indirect variable expansion e.g. with
+  # variables:
+  #   v1: foo
+  #   foo_key: bar
+  #   final: %%(%(v1)s_key)s
+  # "final" will have the value "bar" (first expanded to "%(foo_key)s" and
+  # then to value of "foo_key" i.e. "bar")
+  while re.search("\%\([a-zA-Z][a-zA-Z0-9_]*\)s", data):
+    data = data % all_vars
+  return data
 
 def resolve_version(spec, defaults, branch_basename, branch_stream):
     return resolve_spec_data(spec, spec["version"], defaults, branch_basename, branch_stream)
