@@ -477,9 +477,9 @@ def doBuild(args, parser):
   buildTargetsDone = []
 
   dieOnError(not exists(args.configDir),
-             'Cannot find recipes under directory "%s".\n'
-             'Maybe you need to "cd" to the right directory or '
-             'you forgot to run "bits init"?' % args.configDir)
+            'Cannot find recipes under directory "%s".\n'
+            'Maybe you need to "cd" to the right directory or '
+            'you forgot to run "bits init"?' % args.configDir)
 
   _, value = git(("symbolic-ref", "-q", "HEAD"), directory=args.configDir, check=False)
   branch_basename = re.sub("refs/heads/", "", value)
@@ -491,7 +491,7 @@ def doBuild(args, parser):
 
   defaultsReader = lambda : readDefaults(args.configDir, args.defaults, parser.error, args.architecture)
   (err, overrides, taps) = parseDefaults(args.disable,
-                                         defaultsReader, debug)
+                                        defaultsReader, debug)
   dieOnError(err, err)
 
   makedirs(join(workDir, "SPECS"), exist_ok=True)
@@ -667,7 +667,30 @@ def doBuild(args, parser):
     # Version may contain date params like tag, plus %(commit_hash)s,
     # %(short_hash)s and %(tag)s.
     spec["version"] = resolve_version(spec, args.defaults, branch_basename, branch_stream)
-    variables = spec.get("variables", {})
+
+    spec.setdefault("variables", OrderedDict(spec.get("variables", {})))
+    variables = spec["variables"]
+    if "Python" in spec.get("requires", []):
+        # Find the Python package spec safely
+        python_version_str = ""
+        py_spec = specs.get("Python")
+        if isinstance(py_spec, dict):
+            python_version_str = (py_spec.get("version", "") or "").replace("v", "")
+        python_version = python_version_str.split(".") if python_version_str else []
+
+        # Safely extract major, minor, patch versions
+        major = python_version[0] if len(python_version) > 0 else "0"
+        minor = python_version[1] if len(python_version) > 1 else "0"
+        patch = python_version[2] if len(python_version) > 2 else "0"
+
+        # Populate variables dictionary
+        variables.update({
+            "python_major_version": major,
+            "python_minor_version": minor,
+            "python_patch_version": patch,
+            "python_major_minor": f"{major}.{minor}",
+            "python_major_minor_str": f"{major}{minor}",
+        })
     for k, v in variables.items():
       variables[k] = resolve_spec_data(spec, v, args.defaults, branch_basename, branch_stream)
     if "source" in spec:
@@ -1295,3 +1318,4 @@ def doBuild(args, parser):
     banner("Untracked files in the following directories resulted in a rebuild of "
            "the associated package and its dependencies:\n%s\n\nPlease commit or remove them to avoid useless rebuilds.", "\n".join(untrackedFilesDirectories))
   debug("Everything done")
+
