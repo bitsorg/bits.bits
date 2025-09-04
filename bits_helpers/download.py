@@ -128,6 +128,7 @@ def downloadGit(source, dest, work_dir):
     command = format("cd %(exportpath)s &&"
                      "git init &&"
                      "git pull --tags %(protocol)s%(gitroot)s refs/heads/%(branch)s &&"
+                     "git remote add origin %(protocol)s%(gitroot)s &&"
                      "git reset --hard %(tag)s && %(submodules)s"
                      "find . ! -path '%(filter)s' -delete &&"
                      "rm -rf .git .gitattributes .gitignore", **args)
