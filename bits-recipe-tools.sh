@@ -1,6 +1,6 @@
 package: bits-recipe-tools
-version: "0.0.4"
-tag: "v0.0.4"
+version: "0.0.5"
+tag: "v0.0.5"
 source: https://github.com/bitsorg/bits-recipe-tools
 ---
 mkdir -p $INSTALLROOT/bin
@@ -21,6 +21,7 @@ module-whatis "Modulefile for $PKGNAME $PKGVERSION-@@PKGREVISION@$PKGHASH@@"
 # Dependencies
 module load BASE/1.0
 # Our environment
+setenv BITS_RECIPE_TOOLS_ROOT \$::env(BASEDIR)/$PKGNAME/\$version
 set BITS_RECIPE_TOOLS_ROOT \$::env(BASEDIR)/$PKGNAME/\$version
 prepend-path PATH \$BITS_RECIPE_TOOLS_ROOT/bin
 EoF
