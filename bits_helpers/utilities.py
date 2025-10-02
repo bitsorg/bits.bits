@@ -615,7 +615,7 @@ def getPackageList(packages, specs, configDir, preferSystem, noSystem,
             spec["version"] = spec["version"].replace("%(key)s", key)
             recipe = replacement.get("recipe", "")
             # If there's an explicitly-specified recipe, we're still building
-            # the package. If not, aliBuild will still "build" it, but it's
+            # the package. If not, Bits will still "build" it, but it's
             # basically instantaneous, so report to the user that we're taking
             # it from the system.
             if recipe:

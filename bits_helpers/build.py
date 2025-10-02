@@ -486,10 +486,10 @@ def doBuild(args, parser):
 
   makedirs(join(workDir, "SPECS"), exist_ok=True)
 
-  # If the alidist workdir contains a .sl directory, we use Sapling as SCM.
+  # If the bits workdir contains a .sl directory, we use Sapling as SCM.
   # Otherwise, we default to git (without checking for the actual presence of
   # .git). We mustn't check for a .git directory, because some tests use a
-  # subdirectory of the bits source tree as the "alidist" checkout, and
+  # subdirectory of the bits source tree as the "*.bits" checkout, and
   # that won't have a .git directory.
   scm = exists("%s/.sl" % args.configDir) and Sapling() or Git()
   try:
@@ -612,7 +612,7 @@ def doBuild(args, parser):
     spec["commit_hash"] = "0"
     develPackageBranch = ""
     # This is a development package (i.e. a local directory named like
-    # spec["package"]), but there is no "source" key in its alidist recipe,
+    # spec["package"]), but there is no "source" key in its bits recipe,
     # so there shouldn't be any code for it! Presumably, a user has
     # mistakenly named a local directory after one of our packages.
     dieOnError("source" not in spec and spec["is_devel_pkg"],
@@ -621,7 +621,7 @@ def doBuild(args, parser):
                "mistake, please rename the {package} directory or use the "
                "'--no-local {package}' option. If bits should pick up "
                "source code from this directory, add a 'source:' key to "
-               "alidist/{recipe}.sh instead."
+               "{recipe}.sh instead."
                .format(package=p, recipe=p.lower()))
     if "source" in spec:
       # Tag may contain date params like %(year)s, %(month)s, %(day)s, %(hour).
@@ -1211,7 +1211,7 @@ def doBuild(args, parser):
         buildErrMsg += dedent(f"""
         Build info:
         OS: {detected_arch}
-        Using aliBuild from alibuild@{__version__ or "unknown"} recipes in alidist@{os.environ["ALIBUILD_ALIDIST_HASH"][:10]}
+        Using BITS from bits@{__version__ or "unknown"} recipes in bits@{os.environ["BITS_DIST_HASH"][:10]}
         Build arguments: {args_str}
         """)
 
@@ -1219,7 +1219,7 @@ def doBuild(args, parser):
           buildErrMsg += f'XCode version: {getstatusoutput("xcodebuild -version")[1]}'
 
       except Exception as exc:
-        warning("Failed to gather build info", exc_info=exc)
+        warning("Failed to gather build info: %s", exc)
 
 
       dieOnError(err, buildErrMsg.strip())

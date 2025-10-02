@@ -117,7 +117,7 @@ def install_wrapper_script(name, work_dir):
     if exc.errno != 17:
       raise
   # Create a wrapper script that cleans up the environment, so we don't see the
-  # OpenSSL built by aliBuild.
+  # OpenSSL built by Bits
   with open(os.path.join(script_dir, name), "w") as scriptf:
     # Compute the "real" executable path each time, as the wrapper script might
     # be called on the host or in a container.
