@@ -1,6 +1,7 @@
 from textwrap import dedent
 import unittest
 from unittest import mock
+import tempfile
 
 from bits_helpers.cmd import getstatusoutput
 from bits_helpers.utilities import getPackageList
@@ -66,8 +67,16 @@ RECIPES = {
     force_rebuild: true
     ---
     """),
+    "CONFIG_DIR/dirty_prefer_system_check.sh": dedent("""\
+    package: dirty_prefer_system_check
+    version: v1
+    prefer_system: .*
+    prefer_system_check: |
+      pwd > HEREE
+      exit 0
+    ---
+    """),
 }
-
 
 class MockReader:
     def __init__(self, url, dist=None):
@@ -80,6 +89,9 @@ class MockReader:
 
 def getPackageListWithDefaults(packages, force_rebuild=()):
     specs = {}   # getPackageList will mutate this
+    def performPreferCheckWithTempDir(pkg, cmd):
+      with tempfile.TemporaryDirectory(prefix=f"bits_prefer_check_{pkg['package']}_") as temp_dir:
+        return getstatusoutput(cmd, cwd=temp_dir)
     return_values = getPackageList(
         packages=packages,
         specs=specs,
@@ -93,8 +105,8 @@ def getPackageListWithDefaults(packages, force_rebuild=()):
         disable=[],
         defaults="release",
         # Mock recipes just run "echo" or ":", so this is safe.
-        performPreferCheck=lambda spec, cmd: getstatusoutput(cmd),
-        performRequirementCheck=lambda spec, cmd: getstatusoutput(cmd),
+        performPreferCheck=performPreferCheckWithTempDir,
+        performRequirementCheck=performPreferCheckWithTempDir,
         performValidateDefaults=lambda spec: (True, "", ["release"]),
         overrides={"defaults-release": {}},
         taps={},
@@ -168,6 +180,14 @@ class ReplacementTestCase(unittest.TestCase):
             getPackageListWithDefaults(["missing-spec"])
         self.assertTrue(warning_exists)
 
+    def test_dirty_system_check(self) -> None:
+        """Check that prefer_system_check runs in isolation and doesn't create files in cwd."""
+        def fake_exists(n):
+            return n in RECIPES.keys()
+        with patch.object(os.path, "exists", fake_exists):
+            getPackageListWithDefaults(["dirty_prefer_system_check"])
+            # can't use os.path.exists() ourselves, as we just mocked it
+            self.assertFalse("HEREE" in os.listdir())
 
 
 @mock.patch("bits_helpers.utilities.getRecipeReader", new=MockReader)
@@ -188,6 +208,8 @@ class ForceRebuildTestCase(unittest.TestCase):
         )
         self.assertTrue(specs["force-rebuild"]["force_rebuild"])
         self.assertTrue(specs["defaults-release"]["force_rebuild"])
+
+
 
 
 if __name__ == '__main__':
