@@ -371,6 +371,7 @@ class CVMFSRemoteSync:
       remote_store=self.remoteStore,
       links_path=links_path,
     ))
+    print(f"fetch_symlink: maybe something wrong? {err}")
 
   def upload_symlinks_and_tarball(self, spec) -> None:
     dieOnError(True, "CVMFS backend does not support uploading directly")
