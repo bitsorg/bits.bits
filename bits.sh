@@ -6,18 +6,12 @@ source: https://github.com/bitsorg/bits
 # Build-only: their files are copied into runtime/ (below), so loading bits must
 # not load them, nor put their bin and lib on PATH and LD_LIBRARY_PATH.
 build_requires:
-  - bits-recipe-tools
   - bits-python
   - Tcl
   - environment-modules
 license: GPL-3.0-or-later
 ---
 #!/bin/bash -e
-##############################
-. $(bits-include BitsRecipe)
-##############################
-MODULE_OPTIONS=""
-##############################
 # The install is the runtime part of a git checkout (the README's "clone and put
 # it on PATH"): the scripts with bits_helpers/, keys/ and templates/ beside them,
 # which bits finds relative to its own directory. It goes to libexec/bits, not
@@ -27,22 +21,26 @@ MODULE_OPTIONS=""
 # modulecmd, copied from those packages. bits finds it there and runs them by
 # path, so it needs nothing on PATH, LD_LIBRARY_PATH or PYTHONPATH and adds
 # nothing to the environment of what it builds or loads.
-function MakeInstall() {
-  local dest="$INSTALLROOT/libexec/bits" d
-  mkdir -p "$dest/runtime"
-  # No .git in the install: bits_helpers/version.py reads the version of an
-  # installed package from _version.py.
-  rsync -a --exclude '/.*' --exclude /tests --exclude /docs --exclude /console-backend \
-        --exclude /debian --exclude /tools --exclude '/*.egg-info' --exclude __pycache__ \
-        ./ "$dest/" &&
-    printf 'version = "%s"\n' "$PKGVERSION" > "$dest/bits_helpers/_version.py" &&
-    for d in "${BITS_PYTHON_ROOT:?}"/{bin,lib} "${TCL_ROOT:?}"/{bin,lib} "${ENVIRONMENT_MODULES_ROOT:?}"/{bin,libexec}; do
-      mkdir -p "$dest/runtime/${d##*/}" && cp -a "$d/." "$dest/runtime/${d##*/}/" || return
-    done &&
-    [ -x "$dest/runtime/bin/python3" ] && [ -x "$dest/runtime/bin/modulecmd" ]
-}
+dest="$INSTALLROOT/libexec/bits"
+mkdir -p "$dest/runtime"
+rsync -a --exclude '/.*' --exclude /tests --exclude /docs --exclude /console-backend \
+      --exclude /debian --exclude /tools --exclude '/*.egg-info' --exclude __pycache__ \
+      "$SOURCEDIR/" "$dest/"
+# No .git in the install: bits_helpers/version.py reads the version of an
+# installed package from _version.py.
+printf 'version = "%s"\n' "$PKGVERSION" > "$dest/bits_helpers/_version.py"
+for d in "${BITS_PYTHON_ROOT:?}"/{bin,lib} "${TCL_ROOT:?}"/{bin,lib} "${ENVIRONMENT_MODULES_ROOT:?}"/{bin,libexec}; do
+  mkdir -p "$dest/runtime/${d##*/}"
+  cp -a "$d/." "$dest/runtime/${d##*/}/"
+done
+[ -x "$dest/runtime/bin/python3" ] && [ -x "$dest/runtime/bin/modulecmd" ]
 
-function PostInstall() {
-  # `module load bits`: the scripts' directory on PATH.
-  echo 'prepend-path PATH $PKG_ROOT/libexec/bits' >> "$MODULEFILE"
-}
+# `module load bits`: the scripts' directory on PATH. BASE/1.0 (published with
+# the modules) sets BASEDIR; bits fills in the revision placeholder on install.
+mkdir -p "$INSTALLROOT/etc/modulefiles"
+cat > "$INSTALLROOT/etc/modulefiles/bits" <<EOS
+#%Module1.0
+module-whatis "bits $PKGVERSION"
+if ![ is-loaded BASE/1.0 ] { module load BASE/1.0 }
+prepend-path PATH \$::env(BASEDIR)/bits/$PKGVERSION-@@PKGREVISION@$PKGHASH@@/libexec/bits
+EOS
