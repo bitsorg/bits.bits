@@ -1,6 +1,7 @@
 package: bits
 description: bits build and environment tool, with its own Python and Environment Modules
 version: "0.6"
+tag: "main"
 source: https://github.com/bitsorg/bits
 # Build-only: their files are copied into runtime/ (below), so loading bits must
 # not load them, nor put their bin and lib on PATH and LD_LIBRARY_PATH.
