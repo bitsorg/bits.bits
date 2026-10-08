@@ -1,0 +1,79 @@
+#!/bin/bash
+# bits entry point, published by hand as /cvmfs/bits.cern.ch/bits/bin/bits (see
+# README.md). It runs bits from this platform's bits view, so nothing has to be
+# installed or sourced; bits brings its own Python and modulecmd (runtime/) and
+# the environment is left as it is. Link to it from anywhere, also from another
+# repository:
+#
+#   ln -s /cvmfs/bits.cern.ch/bits/bin/bits ~/bin/bits-lhcb       # community "lhcb"
+#   ln -s /cvmfs/bits.cern.ch/bits/bin/bits /cvmfs/<repo>/bin/bits  # community of <repo>
+#
+# The community is, in this order: the link name bits-<community>,
+# $BITS_ORGANISATION, the repository the link is in (etc/communities). Every
+# command is plain bits on the user's own work directory (sw/); a community only
+# selects its recipes and turns on reuse of what it published on CVMFS.
+
+die() { echo "bits: $*" >&2; exit 1; }
+
+self=$(realpath -s -- "$0" 2>/dev/null || echo "$0")   # as invoked, links kept
+root=$(cd "$(dirname "$(readlink -f -- "$0")")/.." && pwd)
+[[ -d $root/views ]] || root=/cvmfs/bits.cern.ch/bits   # a copy, not a link
+release=LCG_110          # the release whose views this entry point runs
+build=gcc15-opt          # the build of those views
+
+# Host platform tokens, as in bits architectures: CPU and el<N> / ubuntu<NNNN>.
+cpu=$(uname -m)
+os=$( . /etc/os-release 2>/dev/null
+      if [[ ${PLATFORM_ID:-} =~ ^platform:(el[0-9]+)$ ]]; then echo "${BASH_REMATCH[1]}"
+      elif [[ ${ID:-} == ubuntu ]]; then echo "ubuntu${VERSION_ID//./}"
+      fi )
+[[ -n $os ]] || die "unsupported platform ($(uname -sm))"
+
+# pick_arch DIR PREFERRED: the one directory of DIR built for this host,
+# PREFERRED (e.g. gcc15-opt) deciding between several; else nothing.
+pick_arch() {
+  local d n found=()
+  for d in "$1"/*/; do
+    n=$(basename "$d")
+    [[ $n == *"$cpu"* || $n == *"${cpu/_/-}"* ]] || continue
+    case $os in
+      el*) [[ $n =~ (^|[-_])(el|slc|alma|rhel|rocky|centos)${os#el}([-_]|$) ]] || continue ;;
+      *)   [[ $n =~ (^|[-_])$os([-_]|$) ]] || continue ;;
+    esac
+    found+=("$n")
+  done
+  if (( ${#found[@]} > 1 )) && [[ -n $2 ]]; then
+    for n in "${found[@]}"; do [[ $n == *"$2"* ]] && { echo "$n"; return; }; done
+  fi
+  (( ${#found[@]} == 1 )) && echo "${found[0]}"
+}
+
+# The bits view: bits with its runtime.
+view=${BITS_RUNTIME_VIEW:-}
+if [[ -z $view ]]; then
+  a=$(pick_arch "$root/views/$release" "$build")
+  [[ -n $a ]] || die "no bits view for $cpu-$os under $root/views/$release"
+  view=$root/views/$release/$a
+fi
+bits=$view/libexec/bits
+[[ -x $bits/bits && -x $bits/runtime/bin/python3 ]] || die "incomplete bits view $view"
+
+# The community, kept in bits' own $BITS_ORGANISATION (upper case, e.g. LHCB),
+# which bits uses for the community's recipes. A community that publishes here
+# (etc/communities) also gets CVMFS reuse for builds by default: --reuse-from
+# cvmfs, unless BITS_REUSE_FROM is already set (empty turns it off).
+name=${self##*/}
+[[ $name == bits-?* ]] && BITS_ORGANISATION=${name#bits-}
+if [[ -z ${BITS_ORGANISATION:-} && $self =~ ^/cvmfs/([^/]+)/ ]]; then
+  BITS_ORGANISATION=$(awk -v r="${BASH_REMATCH[1]}" '!/^#/ && NF >= 2 {
+      n = split($2, a, ","); for (i = 1; i <= n; i++) if (a[i] == r) { print $1; exit } }' \
+    "$root/etc/communities" 2>/dev/null)
+fi
+if [[ -n ${BITS_ORGANISATION:-} ]]; then
+  export BITS_ORGANISATION=${BITS_ORGANISATION^^}
+  if [[ -z ${BITS_REUSE_FROM+set} ]] &&
+     awk -v c="${BITS_ORGANISATION,,}" '!/^#/ && $1 == c { f = 1 } END { exit !f }' "$root/etc/communities" 2>/dev/null; then
+    export BITS_REUSE_FROM=cvmfs
+  fi
+fi
+exec "$bits/bits" "$@"

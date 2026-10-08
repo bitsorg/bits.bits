@@ -1,0 +1,16 @@
+# Communities that publish on bits.cern.ch, for the bits entry point; published
+# by hand next to it as /cvmfs/bits.cern.ch/bits/etc/communities (see README.md).
+# A community listed here gets --reuse-from cvmfs for its builds by default.
+#
+#   name          lower case; `bits-<name>` links and $BITS_ORGANISATION select it
+#   repositories  comma-separated CVMFS repositories where a link named plain
+#                 `bits` means this community (e.g. alice.cern.ch), or -
+#
+# name     repositories
+alice      -
+atlas      -
+cms        -
+key4hep    -
+lcg        -
+lhcb       -
+ship       -
