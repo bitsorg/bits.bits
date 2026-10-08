@@ -128,9 +128,15 @@ The entry point does the following:
    `bits use` profile, wins; `BITS_REUSE_FROM=` turns it off. Recipes without a
    CVMFS layout, or with nothing deployed for the architecture, build without
    reuse, with a warning.
-4. It runs bits. Every command, the module commands included, works on the
-   user's own work directory, so local builds are always seen; to look at the
-   CVMFS tree itself, `bits cvmfs show` and `bits cvmfs summary` read it directly.
+4. For such a community with a `prefix` in `etc/communities`, it also sets
+   `BITS_CVMFS_PREFIX` to it, unless the variable is already set (empty turns it
+   off). `bits q`, `enter`, `load`, `printenv`, `unload` and `setenv` then also
+   use the modules the community published under
+   `<prefix>/<arch>/Modules/modulefiles`, for the architecture (`-a` or the
+   detected one), the same without its `-opt`/`-dbg` (the toolchain) and with
+   the other one, after the local ones: local builds always come first.
+5. It runs bits on the user's own work directory. `bits cvmfs show` and
+   `bits cvmfs summary` read the CVMFS tree itself.
 
 The entry point sets no PATH, LD_LIBRARY_PATH or PYTHONPATH: bits uses its own
 runtime.
@@ -142,15 +148,17 @@ must include it.
 
 ## Open points
 
-- **bits needs two changes.** The `runtime/` lookup (in `bits`, `bitsenv` and
-  `bitsStore`) and the `$BITS_REUSE_FROM` default of `--reuse-from` must be in the
-  bits release that `bits.sh` builds.
+- **bits needs three changes.** The `runtime/` lookup (in `bits`, `bitsenv` and
+  `bitsStore`), the `$BITS_REUSE_FROM` default of `--reuse-from` and the
+  `$BITS_CVMFS_PREFIX` module trees must be in the bits release that `bits.sh`
+  builds.
 - **Reuse reads the community's CVMFS modules tree** at the start of every build
   in its recipes, a cost that the opt-in flag paid only when asked for.
-- **The community table is written by hand.** Reuse does not work yet for
-  `alice` and `cms`: bits cannot expand the `{install_dir}` in alice.bits' modules
-  template, and cms.bits declares no CVMFS layout, so their builds skip it with
-  the warning. Generating the table from the bits-console
+- **The community table is written by hand,** prefixes included (each the
+  `system: prefix` of the community's recipes). Reuse does not work yet for
+  `alice` and `cms`, nor do their CVMFS modules (no prefix): bits cannot expand
+  the `{install_dir}` in alice.bits' modules template, and cms.bits declares no
+  CVMFS layout, so their builds skip reuse with the warning. Generating the table from the bits-console
   `ui-config.yaml` files would keep it in step.
 - **No bits-providers entry yet.** Without `bits.bits.sh` and a `registry.json`
   entry in bits-providers, `bits init bits.bits` and `BITS_ORGANISATION=BITS` do not

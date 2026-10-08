@@ -5,12 +5,15 @@
 #   name          lower case; `bits-<name>` links and $BITS_ORGANISATION select it
 #   repositories  comma-separated CVMFS repositories where a link named plain
 #                 `bits` means this community (e.g. alice.cern.ch), or -
+#   prefix        the community's CVMFS prefix (system: prefix in its recipes),
+#                 whose <arch>/Modules/modulefiles bits q/enter/load use
+#                 ($BITS_CVMFS_PREFIX), or - for none
 #
-# name     repositories
-alice      -
-atlas      -
-cms        -
-key4hep    -
-lcg        -
-lhcb       -
-ship       -
+# name     repositories   prefix
+alice      -              -
+atlas      -              /cvmfs/bits.cern.ch/atlas
+cms        -              -
+key4hep    -              /cvmfs/bits.cern.ch/key4hep
+lcg        -              /cvmfs/bits.cern.ch/lcg
+lhcb       -              /cvmfs/bits.cern.ch/lhcb
+ship       -              /cvmfs/bits.cern.ch/ship

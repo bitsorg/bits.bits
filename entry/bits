@@ -11,7 +11,8 @@
 # The community is, in this order: the link name bits-<community>,
 # $BITS_ORGANISATION, the repository the link is in (etc/communities). Every
 # command is plain bits on the user's own work directory (sw/); a community only
-# selects its recipes and turns on reuse of what it published on CVMFS.
+# selects its recipes, turns on reuse of what it published on CVMFS, and adds
+# its published modules after the local ones.
 
 die() { echo "bits: $*" >&2; exit 1; }
 
@@ -60,8 +61,10 @@ bits=$view/libexec/bits
 
 # The community, kept in bits' own $BITS_ORGANISATION (upper case, e.g. LHCB),
 # which bits uses for the community's recipes. A community that publishes here
-# (etc/communities) also gets CVMFS reuse for builds by default: --reuse-from
-# cvmfs, unless BITS_REUSE_FROM is already set (empty turns it off).
+# (etc/communities) also gets, unless the variable is already set (empty turns
+# it off): CVMFS reuse for builds (BITS_REUSE_FROM=cvmfs, the default of
+# --reuse-from), and its published modules in bits q/enter/load
+# (BITS_CVMFS_PREFIX, its prefix column, unless that is -).
 name=${self##*/}
 [[ $name == bits-?* ]] && BITS_ORGANISATION=${name#bits-}
 if [[ -z ${BITS_ORGANISATION:-} && $self =~ ^/cvmfs/([^/]+)/ ]]; then
@@ -71,9 +74,11 @@ if [[ -z ${BITS_ORGANISATION:-} && $self =~ ^/cvmfs/([^/]+)/ ]]; then
 fi
 if [[ -n ${BITS_ORGANISATION:-} ]]; then
   export BITS_ORGANISATION=${BITS_ORGANISATION^^}
-  if [[ -z ${BITS_REUSE_FROM+set} ]] &&
-     awk -v c="${BITS_ORGANISATION,,}" '!/^#/ && $1 == c { f = 1 } END { exit !f }' "$root/etc/communities" 2>/dev/null; then
-    export BITS_REUSE_FROM=cvmfs
+  c=$(awk -v c="${BITS_ORGANISATION,,}" '!/^#/ && $1 == c { print $1, ($3 == "" ? "-" : $3); exit }' \
+        "$root/etc/communities" 2>/dev/null)
+  if [[ -n $c ]]; then
+    [[ -z ${BITS_REUSE_FROM+set} ]] && export BITS_REUSE_FROM=cvmfs
+    [[ -z ${BITS_CVMFS_PREFIX+set} && ${c#* } != - ]] && export BITS_CVMFS_PREFIX=${c#* }
   fi
 fi
 exec "$bits/bits" "$@"
