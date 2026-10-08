@@ -22,5 +22,6 @@ system:
   cvmfs_releases_template:    "{prefix}/releases/{release}/{family}{pkg}/{version}/{arch}"
   cvmfs_views_template:       "{prefix}/views/{release}/{arch}"
   # The view holds bits alone: its runtime is copied into it (bits.sh).
-  cvmfs_view_exclude:         [bits-python, Tcl, environment-modules]
+  cvmfs_view_exclude:         [bits-python, Tcl, environment-modules,
+                               OpenSSL, zlib, bzip2, xz, sqlite, libffi]
 ---

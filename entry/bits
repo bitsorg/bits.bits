@@ -20,38 +20,39 @@ root=$(cd "$(dirname "$(readlink -f -- "$0")")/.." && pwd)
 [[ -d $root/views ]] || root=/cvmfs/bits.cern.ch/bits   # a copy, not a link
 release=current          # the release whose views this entry point runs
 
-# Host platform tokens, as in bits architectures: CPU and el<N> / ubuntu<NNNN>.
+# Host platform tokens, as in bits architectures: CPU and el<N> / ubuntu<NNNN>
+# (none on other Linux).
 cpu=$(uname -m)
 os=$( . /etc/os-release 2>/dev/null
       if [[ ${PLATFORM_ID:-} =~ ^platform:(el[0-9]+)$ ]]; then echo "${BASH_REMATCH[1]}"
       elif [[ ${ID:-} == ubuntu ]]; then echo "ubuntu${VERSION_ID//./}"
       fi )
-[[ -n $os ]] || die "unsupported platform ($(uname -sm))"
 
-# pick_arch DIR [PREFERRED]: the one directory of DIR built for this host,
-# PREFERRED (a part of its name) deciding between several; else nothing.
+# pick_arch DIR: the directory of DIR built for this host's CPU. bits is built
+# once per CPU, on the oldest supported OS, and runs on every newer Linux, as
+# its runtime needs nothing of the host but the C library. If DIR has one per
+# OS for this CPU, the one for this OS.
 pick_arch() {
-  local d n found=()
+  local d n all=() same=()
   for d in "$1"/*/; do
     n=$(basename "$d")
     [[ $n == *"$cpu"* || $n == *"${cpu/_/-}"* ]] || continue
+    all+=("$n")
     case $os in
-      el*) [[ $n =~ (^|[-_])(el|slc|alma|rhel|rocky|centos)${os#el}([-_]|$) ]] || continue ;;
-      *)   [[ $n =~ (^|[-_])$os([-_]|$) ]] || continue ;;
+      el*) [[ $n =~ (^|[-_])(el|slc|alma|rhel|rocky|centos)${os#el}([-_]|$) ]] && same+=("$n") ;;
+      ?*)  [[ $n =~ (^|[-_])$os([-_]|$) ]] && same+=("$n") ;;
     esac
-    found+=("$n")
   done
-  if (( ${#found[@]} > 1 )) && [[ -n ${2:-} ]]; then
-    for n in "${found[@]}"; do [[ $n == *"$2"* ]] && { echo "$n"; return; }; done
+  if (( ${#same[@]} == 1 )); then echo "${same[0]}"
+  elif (( ${#all[@]} == 1 )); then echo "${all[0]}"
   fi
-  (( ${#found[@]} == 1 )) && echo "${found[0]}"
 }
 
 # The bits view: bits with its runtime.
 view=${BITS_RUNTIME_VIEW:-}
 if [[ -z $view ]]; then
   a=$(pick_arch "$root/views/$release")
-  [[ -n $a ]] || die "no bits view for $cpu-$os under $root/views/$release"
+  [[ -n $a ]] || die "no bits view for $cpu${os:+-$os} under $root/views/$release"
   view=$root/views/$release/$a
 fi
 bits=$view/libexec/bits

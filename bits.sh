@@ -20,7 +20,8 @@ license: GPL-3.0-or-later
 # runtime/ beside the scripts holds bits' own Python with its modules, Tcl and
 # modulecmd, copied from those packages. bits finds it there and runs them by
 # path, so it needs nothing on PATH, LD_LIBRARY_PATH or PYTHONPATH and adds
-# nothing to the environment of what it builds or loads.
+# nothing to the environment of what it builds or loads. The C libraries they
+# use are linked in statically.
 dest="$INSTALLROOT/libexec/bits"
 mkdir -p "$dest/runtime"
 rsync -a --exclude '/.*' --exclude /tests --exclude /docs --exclude /console-backend \
@@ -29,11 +30,32 @@ rsync -a --exclude '/.*' --exclude /tests --exclude /docs --exclude /console-bac
 # No .git in the install: bits_helpers/version.py reads the version of an
 # installed package from _version.py.
 printf 'version = "%s"\n' "$PKGVERSION" > "$dest/bits_helpers/_version.py"
+# Static archives and pkg-config files are for building against, not running.
 for d in "${BITS_PYTHON_ROOT:?}"/{bin,lib} "${TCL_ROOT:?}"/{bin,lib} "${ENVIRONMENT_MODULES_ROOT:?}"/{bin,libexec}; do
   mkdir -p "$dest/runtime/${d##*/}"
-  cp -a "$d/." "$dest/runtime/${d##*/}/"
+  rsync -a --exclude '*.a' --exclude /pkgconfig "$d/" "$dest/runtime/${d##*/}/"
 done
-[ -x "$dest/runtime/bin/python3" ] && [ -x "$dest/runtime/bin/modulecmd" ]
+[[ -x $dest/runtime/bin/python3 && -x $dest/runtime/bin/tclsh8.6 && -x $dest/runtime/bin/modulecmd ]]
+
+# The runtime loads no library from the host but the C library (and libgcc_s,
+# which wheels may use), and no library through a search path that is not
+# $ORIGIN-relative: so LD_LIBRARY_PATH never changes what bits runs, and the
+# build host's libraries are never needed. Libraries that come with the
+# runtime (the wheels' own, under $ORIGIN) are fine.
+command -v readelf > /dev/null
+bad=$(find "$dest/runtime" -type f \( -name '*.so' -o -name '*.so.*' -o -perm -u+x \) |
+while IFS= read -r f; do
+  { readelf -d "$f" 2> /dev/null || true; } | sed -n 's/.*(\(NEEDED\|RPATH\|RUNPATH\)).*\[\(.*\)\]/\1 \2/p' |
+  while read -r tag val; do
+    case $tag:$val in
+      NEEDED:libc.so.*|NEEDED:libm.so.*|NEEDED:libdl.so.*|NEEDED:libpthread.so.*|NEEDED:librt.so.*|\
+      NEEDED:libutil.so.*|NEEDED:ld-linux*|NEEDED:libgcc_s.so.*) ;;
+      NEEDED:*) [[ -n $(find "$dest/runtime" -name "$val" -print -quit) ]] || echo "$f needs $val" ;;
+      *) for p in ${val//:/ }; do [[ $p == '$ORIGIN'* ]] || echo "$f has $tag $val"; done ;;
+    esac
+  done
+done)
+[[ -z $bad ]] || { echo "$bad"; exit 1; }
 
 # `module load bits`: the scripts' directory on PATH. BASE/1.0 (published with
 # the modules) sets BASEDIR; bits fills in the revision placeholder on install.
