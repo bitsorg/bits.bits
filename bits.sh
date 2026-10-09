@@ -37,6 +37,13 @@ for d in "${BITS_PYTHON_ROOT:?}"/{bin,lib} "${TCL_ROOT:?}"/{bin,lib} "${ENVIRONM
 done
 [[ -x $dest/runtime/bin/python3 && -x $dest/runtime/bin/tclsh8.6 && -x $dest/runtime/bin/modulecmd ]]
 
+# Compiled Python checked against the source's content, not its time (as Python
+# does under SOURCE_DATE_EPOCH): a package unpacked from its tarball, or
+# published on CVMFS, has other file times than here, and bytecode checked by
+# time would be recompiled on every run there (it cannot be written).
+"$dest/runtime/bin/python3" -E -s -m compileall -q -f -j 0 -o 0 -o 1 -o 2 \
+  --invalidation-mode checked-hash "$dest"
+
 # The runtime loads no library from the host but the C library (and libgcc_s,
 # which wheels may use), and no library through a search path that is not
 # $ORIGIN-relative: so LD_LIBRARY_PATH never changes what bits runs, and the
