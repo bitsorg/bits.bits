@@ -9,10 +9,10 @@
 #   ln -s /cvmfs/bits.cern.ch/bits/bin/bits /cvmfs/<repo>/bin/bits  # community of <repo>
 #
 # The community is, in this order: the link name bits-<community>,
-# $BITS_ORGANISATION, the repository the link is in (etc/communities). Every
-# command is plain bits on the user's own work directory (sw/); a community only
-# selects its recipes, turns on reuse of what it published on CVMFS, and adds
-# its published modules after the local ones.
+# $BITS_COMMUNITY (or $BITS_ORGANISATION), the repository the link is in
+# (etc/communities). Every command is plain bits on the user's own work
+# directory (sw/); a community only selects its recipes, turns on reuse of what
+# it published on CVMFS, and adds its published modules after the local ones.
 
 die() { echo "bits: $*" >&2; exit 1; }
 
@@ -59,22 +59,25 @@ fi
 bits=$view/libexec/bits
 [[ -x $bits/bits && -x $bits/runtime/bin/python3 ]] || die "incomplete bits view $view"
 
-# The community, kept in bits' own $BITS_ORGANISATION (upper case, e.g. LHCB),
-# which bits uses for the community's recipes. A community that publishes here
+# The community, kept in bits' own $BITS_COMMUNITY (upper case, e.g. LHCB),
+# which bits uses for the community's recipes ($BITS_ORGANISATION, its former
+# name, still works). A community that publishes here
 # (etc/communities) also gets, unless the variable is already set (empty turns
 # it off): CVMFS reuse for builds (BITS_REUSE_FROM=cvmfs, the default of
 # --reuse-from), and its published modules in bits q/enter/load
 # (BITS_CVMFS_PREFIX, its prefix column, unless that is -).
 name=${self##*/}
-[[ $name == bits-?* ]] && BITS_ORGANISATION=${name#bits-}
-if [[ -z ${BITS_ORGANISATION:-} && $self =~ ^/cvmfs/([^/]+)/ ]]; then
-  BITS_ORGANISATION=$(awk -v r="${BASH_REMATCH[1]}" '!/^#/ && NF >= 2 {
+BITS_COMMUNITY=${BITS_COMMUNITY:-${BITS_ORGANISATION:-}}
+[[ $name == bits-?* ]] && BITS_COMMUNITY=${name#bits-}
+if [[ -z $BITS_COMMUNITY && $self =~ ^/cvmfs/([^/]+)/ ]]; then
+  BITS_COMMUNITY=$(awk -v r="${BASH_REMATCH[1]}" '!/^#/ && NF >= 2 {
       n = split($2, a, ","); for (i = 1; i <= n; i++) if (a[i] == r) { print $1; exit } }' \
     "$root/etc/communities" 2>/dev/null)
 fi
-if [[ -n ${BITS_ORGANISATION:-} ]]; then
-  export BITS_ORGANISATION=${BITS_ORGANISATION^^}
-  c=$(awk -v c="${BITS_ORGANISATION,,}" '!/^#/ && $1 == c { print $1, ($3 == "" ? "-" : $3); exit }' \
+if [[ -n $BITS_COMMUNITY ]]; then
+  export BITS_COMMUNITY=${BITS_COMMUNITY^^}
+  export BITS_ORGANISATION=$BITS_COMMUNITY   # for a bits from before the rename
+  c=$(awk -v c="${BITS_COMMUNITY,,}" '!/^#/ && $1 == c { print $1, ($3 == "" ? "-" : $3); exit }' \
         "$root/etc/communities" 2>/dev/null)
   if [[ -n $c ]]; then
     [[ -z ${BITS_REUSE_FROM+set} ]] && export BITS_REUSE_FROM=cvmfs

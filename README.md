@@ -14,7 +14,7 @@ ln -s /cvmfs/bits.cern.ch/bits/bin/bits ~/bin/bits-key4hep
 cd key4hep.bits
 bits-key4hep build key4hep         # reuses what is on CVMFS, builds the rest in sw/
 bits-key4hep enter key4hep/latest  # from sw/: local builds first, then reused ones
-BITS_ORGANISATION=LHCB /cvmfs/bits.cern.ch/bits/bin/bits build Gaudi
+BITS_COMMUNITY=LHCB /cvmfs/bits.cern.ch/bits/bin/bits build Gaudi
 ```
 
 The repository stands alone. It needs no other recipe repository, no compiler
@@ -114,12 +114,12 @@ The entry point does the following:
    is announced.
 2. It works out the community, in this order:
    - the link name `bits-<community>`;
-   - `$BITS_ORGANISATION`, the variable bits itself already uses for the
-     community's recipes;
+   - `$BITS_COMMUNITY` (or `$BITS_ORGANISATION`, its former name), the variable
+     bits itself uses for the community's recipes;
    - the CVMFS repository the link is in, from the `repositories` column of
      `etc/communities`.
 
-   It exports the result as `BITS_ORGANISATION`, in upper case.
+   It exports the result as `BITS_COMMUNITY`, in upper case.
 3. For a community listed in `etc/communities`, it sets `BITS_REUSE_FROM=cvmfs`
    unless the variable is already set. That is the default of `bits build
    --reuse-from` (bits' opt-in reuse of deployed components): a build reuses what
@@ -161,7 +161,7 @@ must include it.
   CVMFS layout, so their builds skip reuse with the warning. Generating the table from the bits-console
   `ui-config.yaml` files would keep it in step.
 - **No bits-providers entry yet.** Without `bits.bits.sh` and a `registry.json`
-  entry in bits-providers, `bits init bits.bits` and `BITS_ORGANISATION=BITS` do not
+  entry in bits-providers, `bits init bits.bits` and `BITS_COMMUNITY=BITS` do not
   work. A plain clone does.
 - **`version: "0.6"` while the recipe builds `main`.** `bits --version` says 0.6
   whichever commit it was built from; set the version (and `tag:`) to a release
