@@ -155,7 +155,7 @@ must include it.
 
 ## Open points
 
-- **bits needs three changes.** The `runtime/` lookup (in `bits`, `bitsenv` and
+- **bits needs three changes.** The `runtime/` lookup (in `bits` and
   `bitsStore`), the `$BITS_REUSE_FROM` default of `--reuse-from` and the
   `$BITS_CVMFS_PREFIX` module trees must be in the bits release that `bits.sh`
   builds.
