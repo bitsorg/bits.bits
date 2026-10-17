@@ -8,9 +8,10 @@
 #   ln -s /cvmfs/bits.cern.ch/bits/bin/bits ~/bin/bits-lhcb       # community "lhcb"
 #   ln -s /cvmfs/bits.cern.ch/bits/bin/bits /cvmfs/<repo>/bin/bits  # community of <repo>
 #
-# The community is, in this order: the link name bits-<community>,
-# $BITS_COMMUNITY (or $BITS_ORGANISATION), the repository the link is in
-# (etc/communities). Every command is plain bits on the user's own work
+# The community is, in this order: `bits --community <community> ...` (first,
+# before the sub-command, e.g. on a grid job's command line), the link name
+# bits-<community>, $BITS_COMMUNITY (or $BITS_ORGANISATION), the repository the
+# link is in (etc/communities). Every command is plain bits on the user's own work
 # directory (sw/); a community only selects its recipes, turns on reuse of what
 # it published on CVMFS, and adds its published modules after the local ones.
 
@@ -69,6 +70,14 @@ bits=$view/libexec/bits
 name=${self##*/}
 BITS_COMMUNITY=${BITS_COMMUNITY:-${BITS_ORGANISATION:-}}
 [[ $name == bits-?* ]] && BITS_COMMUNITY=${name#bits-}
+given=
+while [[ ${1:-} == --community || ${1:-} == --community=* ]]; do
+  given=1
+  if [[ $1 == --community ]]; then BITS_COMMUNITY=${2-}; shift $(( $# > 1 ? 2 : 1 ))
+  else BITS_COMMUNITY=${1#*=}; shift; fi
+  [[ $BITS_COMMUNITY =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] ||
+    die "--community needs a community name, not '$BITS_COMMUNITY'"
+done
 if [[ -z $BITS_COMMUNITY && $self =~ ^/cvmfs/([^/]+)/ ]]; then
   BITS_COMMUNITY=$(awk -v r="${BASH_REMATCH[1]}" '!/^#/ && NF >= 2 {
       n = split($2, a, ","); for (i = 1; i <= n; i++) if (a[i] == r) { print $1; exit } }' \
@@ -82,6 +91,8 @@ if [[ -n $BITS_COMMUNITY ]]; then
   if [[ -n $c ]]; then
     [[ -z ${BITS_REUSE_FROM+set} ]] && export BITS_REUSE_FROM=cvmfs
     [[ -z ${BITS_CVMFS_PREFIX+set} && ${c#* } != - ]] && export BITS_CVMFS_PREFIX=${c#* }
+  elif [[ -n $given && -r $root/etc/communities ]]; then
+    echo "bits: community ${BITS_COMMUNITY,,} publishes nothing here (not in $root/etc/communities)" >&2
   fi
 fi
 exec "$bits/bits" "$@"

@@ -15,7 +15,11 @@ cd key4hep.bits
 bits-key4hep build key4hep         # reuses what is on CVMFS, builds the rest in sw/
 bits-key4hep enter key4hep/latest  # from sw/: local builds first, then reused ones
 BITS_COMMUNITY=LHCB /cvmfs/bits.cern.ch/bits/bin/bits build Gaudi
+/cvmfs/bits.cern.ch/bits/bin/bits --community key4hep setenv key4hep/2026-10-01 -c ./run.sh
 ```
+
+The last is a grid job: it needs neither a work directory nor Python, only the
+community's modules on CVMFS.
 
 The repository stands alone. It needs no other recipe repository, no compiler
 package and no LCG release: `defaults-release.sh` holds the CVMFS layout, and the
@@ -113,13 +117,16 @@ The entry point does the following:
    `BITS_RUNTIME_VIEW=<path of a view>` runs another view, e.g. a new one before it
    is announced.
 2. It works out the community, in this order:
+   - `--community <community>`, given first, before the sub-command (bits does
+     not see it);
    - the link name `bits-<community>`;
    - `$BITS_COMMUNITY` (or `$BITS_ORGANISATION`, its former name), the variable
      bits itself uses for the community's recipes;
    - the CVMFS repository the link is in, from the `repositories` column of
      `etc/communities`.
 
-   It exports the result as `BITS_COMMUNITY`, in upper case.
+   It exports the result as `BITS_COMMUNITY`, in upper case. A `--community`
+   that `etc/communities` does not list gets a warning.
 3. For a community listed in `etc/communities`, it sets `BITS_REUSE_FROM=cvmfs`
    unless the variable is already set. That is the default of `bits build
    --reuse-from` (bits' opt-in reuse of deployed components): a build reuses what
