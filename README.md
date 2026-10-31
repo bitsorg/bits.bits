@@ -1,12 +1,12 @@
 # bits.bits
 
-bits for users, published on CVMFS so that nothing has to be installed. The
-repository builds `bits` itself together with its own runtime: Python with the
-modules bits imports, Tcl, and Environment Modules (`modulecmd`). bits runs them
-by path, so it changes nothing in the environment of what it builds or loads. A
-small entry point, `/cvmfs/bits.cern.ch/bits/bin/bits`, runs it on any supported
-platform. Given a community, it builds with that community's recipes and reuses
-what the community has published on CVMFS:
+bits for users, straight from CVMFS: nothing has to be installed. The repository
+builds `bits` itself together with its own runtime: Python with the modules bits
+imports, Tcl, and Environment Modules (`modulecmd`). bits runs them by path, so
+it changes nothing in the environment of what it builds or loads. A small entry
+point, `/cvmfs/bits.cern.ch/bits/bin/bits`, runs it on any supported platform.
+Given a community, it builds with that community's recipes and reuses what the
+community has published on CVMFS:
 
 ```bash
 /cvmfs/bits.cern.ch/bits/bin/bits q                        # plain bits (your sw/ dir)
@@ -78,7 +78,7 @@ and binutils. It needs no development packages, as every library comes from a
 recipe here, and is better without them. `bits-python` stops if a standard
 module bits needs was not built, and `bits` if the runtime would need a host
 library. The build architecture is the platform itself (`x86_64-el8`,
-`ubuntu2404_x86-64`, …).
+`x86_64-ubuntu2404`, …).
 
 Build once per CPU, on the oldest platform the CI builds for it: `x86_64-el8`
 and `aarch64-el9`. The runtime needs nothing of the host but the C library, so
