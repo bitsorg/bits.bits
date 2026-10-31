@@ -14,7 +14,7 @@ ln -s /cvmfs/bits.cern.ch/bits/bin/bits ~/bin/bits-key4hep
 cd key4hep.bits
 bits-key4hep build key4hep         # reuses what is on CVMFS, builds the rest in sw/
 bits-key4hep enter key4hep/latest  # from sw/: local builds first, then reused ones
-BITS_COMMUNITY=LHCB /cvmfs/bits.cern.ch/bits/bin/bits build Gaudi
+BITS_COMMUNITY=LCG /cvmfs/bits.cern.ch/bits/bin/bits build --defaults gcc14::opt --set release=LCG_110 ROOT
 /cvmfs/bits.cern.ch/bits/bin/bits --community key4hep setenv key4hep/2026-10-01 -c ./run.sh
 ```
 
