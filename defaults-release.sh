@@ -11,17 +11,5 @@ variables:
   # (replace_on_conflict in the Bits community).
   release: "current"
 
-# CVMFS namespace + layout (system: is NOT hashed): packages once per build
-# arch, modulefiles beside them, and the merged view.
-system:
-  prefix:                     "/cvmfs/bits.cern.ch/bits"
-  cvmfs_user_prefix:          "{prefix}/user"
-  cvmfs_packages_template:    "{prefix}/{arch}/Packages/{pkg}/{tag}"
-  cvmfs_modules_template:     "{prefix}/{arch}/Modules/modulefiles/{pkg}"
-  cvmfs_shared_path_template: "{prefix}/noarch/{pkg}/{tag}"
-  cvmfs_releases_template:    "{prefix}/releases/{release}/{family}{pkg}/{version}/{arch}"
-  cvmfs_views_template:       "{prefix}/views/{release}/{arch}"
-  # The view holds bits alone: its runtime is copied into it (bits.sh).
-  cvmfs_view_exclude:         [bits-python, Tcl, environment-modules,
-                               OpenSSL, zlib, bzip2, xz, sqlite, libffi]
+# The CVMFS namespace and layout are in cvmfs.yaml.
 ---
