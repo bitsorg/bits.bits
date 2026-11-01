@@ -1,6 +1,6 @@
 package: bits
 description: bits build and environment tool, with its own Python and Environment Modules
-version: "0.6"
+version: "0.7"
 tag: "main"
 source: https://github.com/bitsorg/bits
 # Build-only: their files are copied into runtime/ (below), so loading bits must
@@ -28,8 +28,10 @@ rsync -a --exclude '/.*' --exclude /tests --exclude /docs --exclude /console-bac
       --exclude /debian --exclude /tools --exclude '/*.egg-info' --exclude __pycache__ \
       "$SOURCEDIR/" "$dest/"
 # No .git in the install: bits_helpers/version.py reads the version of an
-# installed package from _version.py.
-printf 'version = "%s"\n' "$PKGVERSION" > "$dest/bits_helpers/_version.py"
+# installed package from _version.py, the source's own (0.7-12-g1a2b3c4: the tag,
+# commits since, commit), so a build of main says what it is.
+desc=$(git -c safe.directory="$SOURCEDIR" -C "$SOURCEDIR" describe --tags --long 2> /dev/null) || desc=$PKGVERSION
+printf 'version = "%s"\n' "$desc" > "$dest/bits_helpers/_version.py"
 # Static archives and pkg-config files are for building against, not running.
 for d in "${BITS_PYTHON_ROOT:?}"/{bin,lib} "${TCL_ROOT:?}"/{bin,lib} "${ENVIRONMENT_MODULES_ROOT:?}"/{bin,libexec}; do
   mkdir -p "$dest/runtime/${d##*/}"
